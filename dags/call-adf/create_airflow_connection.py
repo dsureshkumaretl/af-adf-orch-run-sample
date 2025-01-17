@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
 from airflow import DAG
+from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
 import os
-from airflow_client.client import ApiClient, Configuration
-from airflow_client.client.api import connection_api
-from airflow_client.client.model.connection import Connection
 
 def create_adf_connection():
+    from airflow_client.client import ApiClient, Configuration
+    from airflow_client.client.api import connection_api
+    from airflow_client.client.model.connection import Connection
+
     # Fetch the connection URI from environment variables
     connection_uri = os.getenv("AIRFLOW_CONN_AZURE_DATA_FACTORY_TEST")
 
@@ -62,9 +64,14 @@ with DAG(
     catchup=False,
 ) as dag:
 
+    install_airflow_client = BashOperator(
+        task_id='install_airflow_client',
+        bash_command='pip install apache-airflow-client'
+    )
+
     create_connection_task = PythonOperator(
         task_id='create_adf_connection',
         python_callable=create_adf_connection,
     )
 
-    create_connection_task
+    install_airflow_client >> create_connection_task
